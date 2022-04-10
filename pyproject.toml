@@ -13,6 +13,7 @@ black = "^22.3.0"
 isort = "^5.10.1"
 mypy = "^0.942"
 pylint = "^2.13.5"
+pytest = "^7.1.1"
 
 [tool.black]
 line-length = 120
@@ -28,6 +29,9 @@ show_absolute_path = true
 show_column_numbers = true
 show_error_codes = true
 files = ["src"]
+
+[tool.pytest.ini_options]
+minversion = 7.0
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
