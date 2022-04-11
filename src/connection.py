@@ -7,14 +7,16 @@ from httpx import AsyncClient
 from httpx_caching import CachingClient
 from loguru import logger
 
-from schema import BulkData, Card, CardSymbol, Set
+from schema import BulkData, Cards, CardSymbols, Rulings, Sets
 
 
 class ScryfallConnection:
     def __init__(self):
         self.url = "https://api.scryfall.com/"
 
-    async def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None, return_data: Optional[str] = "data"):
+    async def get(
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None, return_data: Optional[str] = "data"
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
         if params is None:
             params = dict()
         logger.info(f"GET to {self.url}{endpoint}")
@@ -61,7 +63,7 @@ class ScryfallConnection:
         else:
             return returnable
 
-    async def bulk_data(self):
+    async def bulk_data(self) -> List[BulkData]:
         returnable_data = "data"
         bulk_data = await self.get("bulk-data", return_data=returnable_data)
         returnable = list()
@@ -69,20 +71,33 @@ class ScryfallConnection:
             returnable.append(BulkData(**item))
         return returnable
 
-    async def card(self, api_id):
+    async def card_by_id(self, api_id: str) -> Cards:
         returnable_data = None
         card_data = await self.get(f"cards/{api_id}", return_data=returnable_data)
-        return Card(**card_data)
+        return Cards(**card_data)
 
-    async def set(self, api_id):
+    async def set_by_id(self, api_id: str) -> Sets:
         returnable_data = None
         set_data = await self.get(f"sets/{api_id}", return_data=returnable_data)
-        return Set(**set_data)
+        return Sets(**set_data)
 
-    async def symbology(self):
+    async def set_by_code(self, set_code: str) -> Sets:
+        returnable_data = None
+        set_data = await self.get(f"sets/{set_code}", return_data=returnable_data)
+        return Sets(**set_data)
+
+    async def symbology(self) -> List[CardSymbols]:
         returnable_data = "data"
         symbol_data = await self.get("symbology")
         returnable = list()
         for item in symbol_data[returnable_data]:
-            returnable.append(CardSymbol(**item))
+            returnable.append(CardSymbols(**item))
+        return returnable
+
+    async def rulings(self, set_code: str, card_num: str | int) -> List[Rulings]:
+        returnable_data = "data"
+        card_rulings = await self.get(f"cards/{set_code}/{card_num}/rulings")
+        returnable = list()
+        for item in card_rulings[returnable_data]:
+            returnable.append(Rulings(**item))
         return returnable

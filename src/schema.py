@@ -55,7 +55,7 @@ class CardFace:  # ignore[too-many-instance-attributes]
 
 
 @dataclass
-class Card:  # ignore[too-many-instance-attributes]
+class Cards:  # ignore[too-many-instance-attributes]
     # Core Card Fields
     api_id: str
     lang: str
@@ -168,7 +168,7 @@ class Card:  # ignore[too-many-instance-attributes]
 
 
 @dataclass
-class Set:
+class Sets:
     api_id: str
     code: str
     name: str
@@ -196,7 +196,7 @@ class Set:
 
 
 @dataclass
-class CardSymbol:
+class CardSymbols:
     symbol: str
     english: str
     transposable: bool
@@ -211,3 +211,14 @@ class CardSymbol:
 
     # Undocumented
     obj: str = None
+
+
+@dataclass
+class Rulings:
+    source: str
+    published_at: str
+    comment: str
+
+    # Undocumented
+    obj: Optional[str] = None
+    oracle_id: Optional[str] = None
