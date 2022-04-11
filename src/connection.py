@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os.path
 from typing import Any, Dict, List, Optional
 
+import trio
 from httpx import AsyncClient
 from httpx_caching import CachingClient
 from loguru import logger
@@ -10,9 +10,14 @@ from loguru import logger
 from schema import BulkData, Cards, CardSymbols, Rulings, Sets
 
 
+async def ratelimit_request(request):
+    logger.warning("Self Rate Limiting for 500ms")
+    await trio.sleep(0.5)
+
+
 class ScryfallConnection:
     def __init__(self):
-        self.url = "https://api.scryfall.com/"
+        self.url: str = "https://api.scryfall.com/"
 
     async def get(
         self, endpoint: str, params: Optional[Dict[str, Any]] = None, return_data: Optional[str] = "data"
@@ -20,7 +25,7 @@ class ScryfallConnection:
         if params is None:
             params = dict()
         logger.info(f"GET to {self.url}{endpoint}")
-        async with CachingClient(AsyncClient()) as client:
+        async with CachingClient(AsyncClient(event_hooks={"request": [ratelimit_request]})) as client:
             r = await client.get(f"{self.url}{endpoint}", params=sorted(params))
             logger.info(f"GET {r.status_code}")
             sanitized = await self.sanitize_data(r.json())
