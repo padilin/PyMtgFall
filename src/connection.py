@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import trio
@@ -15,6 +16,10 @@ async def ratelimit_request(request):
     await trio.sleep(0.5)
 
 
+async def raise_on_4xx_5xx(response):
+    response.raise_for_status()
+
+
 class ScryfallConnection:
     def __init__(self):
         self.url: str = "https://api.scryfall.com/"
@@ -25,7 +30,9 @@ class ScryfallConnection:
         if params is None:
             params = dict()
         logger.info(f"GET to {self.url}{endpoint}")
-        async with CachingClient(AsyncClient(event_hooks={"request": [ratelimit_request]})) as client:
+        async with CachingClient(
+            AsyncClient(event_hooks={"request": [ratelimit_request], "response": [raise_on_4xx_5xx]})
+        ) as client:
             r = await client.get(f"{self.url}{endpoint}", params=sorted(params))
             logger.info(f"GET {r.status_code}")
             sanitized = await self.sanitize_data(r.json())
