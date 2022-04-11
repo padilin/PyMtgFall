@@ -24,6 +24,8 @@ class ScryfallConnection:
     def __init__(self):
         self.url: str = "https://api.scryfall.com/"
 
+    # Utilities
+
     async def get(
         self, endpoint: str, params: Optional[Dict[str, Any]] = None, return_data: Optional[str] = "data"
     ) -> Dict[str, Any] | List[Dict[str, Any]]:
@@ -33,8 +35,8 @@ class ScryfallConnection:
         async with CachingClient(
             AsyncClient(event_hooks={"request": [ratelimit_request], "response": [raise_on_4xx_5xx]})
         ) as client:
-            r = await client.get(f"{self.url}{endpoint}", params=sorted(params))
-            logger.info(f"GET {r.status_code}")
+            r = await client.get(f"{self.url}{endpoint}", params=params)
+            logger.info(f"GET {r.status_code} at {r.url}")
             sanitized = await self.sanitize_data(r.json())
             returnable = await self.pagination_list(return_data, sanitized)
             return returnable
@@ -75,6 +77,8 @@ class ScryfallConnection:
         else:
             return returnable
 
+    # Bulk Data / Catalog
+
     async def bulk_data(self) -> List[BulkData]:
         returnable_data = "data"
         bulk_data = await self.get("bulk-data", return_data=returnable_data)
@@ -83,10 +87,19 @@ class ScryfallConnection:
             returnable.append(BulkData(**item))
         return returnable
 
+    # Cards
+
     async def card_by_id(self, api_id: str) -> Cards:
         returnable_data = None
         card_data = await self.get(f"cards/{api_id}", return_data=returnable_data)
         return Cards(**card_data)
+
+    async def autocomplete_card_name(self, query: str) -> Dict[str, List[str] | str | int]:
+        returnable_data = "data"
+        params = {"q": query}
+        return await self.get("cards/autocomplete", params=params, return_data=returnable_data)
+
+    # Sets
 
     async def set_by_id(self, api_id: str) -> Sets:
         returnable_data = None
@@ -97,6 +110,8 @@ class ScryfallConnection:
         returnable_data = None
         set_data = await self.get(f"sets/{set_code}", return_data=returnable_data)
         return Sets(**set_data)
+
+    # Misc
 
     async def symbology(self) -> List[CardSymbols]:
         returnable_data = "data"
