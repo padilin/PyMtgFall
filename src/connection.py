@@ -89,15 +89,68 @@ class ScryfallConnection:
 
     # Cards
 
+    async def cards_search(
+        self,
+        q: str,
+        unique: str = "cards",
+        order: str = "name",
+        direction: str = "auto",
+        include_extras: bool = False,
+        include_multilinqual: bool = False,
+        include_variations: bool = False,
+    ) -> List[Cards]:
+        """https://scryfall.com/docs/api/cards/search"""
+        returnable_data = "data"
+        params = {
+            "q": q,
+            "unique": unique,
+            "order": order,
+            "dir": direction,
+            "include_extras": include_extras,
+            "include_multilinqual": include_multilinqual,
+            "include_variations": include_variations,
+        }
+        search_data = await self.get("/cards/search", params=params, return_data=returnable_data)
+        returnable = list()
+        for item in search_data[returnable_data]:
+            returnable.append(Cards(**item))
+        return returnable
+
+    async def cards_named(
+        self,
+        exact: Optional[str] = None,
+        fuzzy: Optional[str] = None,
+        set_code: Optional[str] = None,
+        format: str = "json",
+        face: str = None,
+        version: str = None,
+    ) -> Optional[Cards]:
+        if format is not "json":
+            raise NotImplementedError
+        returnable_date = None
+        params = {
+            "exact": exact,
+            "fuzzy": fuzzy,
+            "set": set_code,
+            "format": format,
+            "face": face,
+            "version": version,
+        }
+        named_card_data = await self.get("cards/named", params=params, return_data=returnable_date)
+        if named_card_data:
+            return Cards(**named_card_data)
+        else:
+            return None
+
+    async def cards_autocomplete(self, query: str) -> Dict[str, List[str] | str | int]:
+        returnable_data = "data"
+        params = {"q": query}
+        return await self.get("cards/autocomplete", params=params, return_data=returnable_data)
+
     async def card_by_id(self, api_id: str) -> Cards:
         returnable_data = None
         card_data = await self.get(f"cards/{api_id}", return_data=returnable_data)
         return Cards(**card_data)
-
-    async def autocomplete_card_name(self, query: str) -> Dict[str, List[str] | str | int]:
-        returnable_data = "data"
-        params = {"q": query}
-        return await self.get("cards/autocomplete", params=params, return_data=returnable_data)
 
     # Sets
 
