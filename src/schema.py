@@ -165,3 +165,49 @@ class Card:  # ignore[too-many-instance-attributes]
             for face in self.card_faces:
                 returnable.append(CardFace(**face))
             self.card_faces = returnable
+
+
+@dataclass
+class Set:
+    api_id: str
+    code: str
+    name: str
+    set_type: str
+    card_count: int
+    digital: bool
+    foil_only: bool
+    nonfoil_only: bool
+    scryfall_uri: str
+    uri: str
+    icon_svg_uri: str
+    search_uri: str
+
+    mtgo_code: Optional[str] = None
+    tcgplayer_id: Optional[int] = None
+    released_at: Optional[str] = None
+    block_code: Optional[str] = None
+    block: Optional[str] = None
+    parent_set_code: Optional[str] = None
+    printed_size: Optional[int] = None
+
+    # Undocumented
+    arena_code: Optional[str] = None
+    obj: Optional[str] = None
+
+
+@dataclass
+class CardSymbol:
+    symbol: str
+    english: str
+    transposable: bool
+    represents_mana: bool
+    appears_in_mana_costs: bool
+    funny: bool
+    colors: str
+    loose_variant: Optional[str] = None
+    cmc: Optional[int] = None
+    gatherer_alternates: Optional[List[str]] = None
+    svg_uri: Optional[str] = None
+
+    # Undocumented
+    obj: str = None

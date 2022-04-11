@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from httpx_caching import CachingClient
 from loguru import logger
 
-from schema import BulkData, Card
+from schema import BulkData, Card, CardSymbol, Set
 
 
 class ScryfallConnection:
@@ -73,3 +73,16 @@ class ScryfallConnection:
         returnable_data = None
         card_data = await self.get(f"cards/{api_id}", return_data=returnable_data)
         return Card(**card_data)
+
+    async def set(self, api_id):
+        returnable_data = None
+        set_data = await self.get(f"sets/{api_id}", return_data=returnable_data)
+        return Set(**set_data)
+
+    async def symbology(self):
+        returnable_data = "data"
+        symbol_data = await self.get("symbology")
+        returnable = list()
+        for item in symbol_data[returnable_data]:
+            returnable.append(CardSymbol(**item))
+        return returnable
