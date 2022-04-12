@@ -24,3 +24,18 @@ Run `poetry add <library>` and add `--dev` at the end to add dev dependency.
 # Running Tests, Black, Pylint, etc.:
 
 Use `poetry run <program>` to use the correct environment.
+
+
+# Changes from API
+
+Some words are reserved by python, so they are translated.  
+
+Data:  
+"id" = "api_id"  
+"object" = "obj"  
+"format" = "format_response"  
+"dir" = "direction"  
+"set" = "set_code"  
+
+Objects:  
+"list" = "APIList"  

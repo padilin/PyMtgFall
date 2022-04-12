@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
+
+from loguru import logger
 
 
 @dataclass
@@ -33,6 +37,8 @@ class CardFace:  # ignore[too-many-instance-attributes]
     name: str
     obj: str
     artist: Optional[str] = None
+    color_indicator: Optional[str] = None
+    colors: Optional[str] = None
     cmc: Optional[int] = None
     flavor_text: Optional[str] = None
     illustration_id: Optional[str] = None
@@ -80,7 +86,7 @@ class Cards:  # ignore[too-many-instance-attributes]
     # Print Fields - unique to particular re/print
     booster: bool
     border_color: str
-    card_back_id: str
+    # card_back_id: Optional[str] = None
     collector_number: str
     digital: bool
     finishes: List[str]
@@ -91,7 +97,7 @@ class Cards:  # ignore[too-many-instance-attributes]
     image_status: str
     prices: List[str]
     promo: bool
-    purchase_uris: List[str]
+    # purchase_uris: List[str]
     rarity: str
     related_uris: List[str]
     released_at: str
@@ -152,6 +158,8 @@ class Cards:  # ignore[too-many-instance-attributes]
     foil: Optional[bool] = None
     nonfoil: Optional[bool] = None
     artist_ids: Optional[List[str]] = None
+    card_back_id: Optional[str] = None  # Can be null?
+    purchase_uris: List[str] = None  # Can be null?
 
     def __post_init__(self):
         if self.all_parts:
@@ -222,3 +230,41 @@ class Rulings:
     # Undocumented
     obj: Optional[str] = None
     oracle_id: Optional[str] = None
+
+
+@dataclass
+class APIList:
+    data: List[Dict[str, Any]]
+
+    # Nullable
+    has_more: bool = False
+    next_page: Optional[str] = None
+    total_cards: Optional[int] = None
+    warnings: Optional[List[str]] = None
+
+    # Undocumented
+    obj: Optional[str] = None
+    not_found: Optional[List[str]] = None
+
+    def __post_init__(self):
+        temp_data = list()
+        logger.debug(f"This is obj processing: {self.obj=}")
+        for item in self.data:
+            try:
+                data_type_class = Object_Map[item["obj"]]
+                temp_data.append(data_type_class(**item))
+            except TypeError:
+                continue
+        self.data = temp_data
+
+
+Object_Map: Dict[str, Type[Cards | CardSymbols | Sets | CardFace | Rulings | RelatedCard | BulkData]] = {
+    "set": Sets,
+    "list": List,
+    "card": Cards,
+    "rulings": Rulings,
+    "symbology": CardSymbols,
+    "": CardFace,
+    "": RelatedCard,
+    "": BulkData,
+}
