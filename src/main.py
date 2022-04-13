@@ -3,7 +3,7 @@
 import trio
 from loguru import logger
 
-from connection import ScryfallConnection
+from .connection import ScryfallConnection
 
 
 async def main():

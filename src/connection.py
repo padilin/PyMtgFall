@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from httpx_caching import CachingClient
 from loguru import logger
 
-from schema import (
+from .schema import (
     APIList,
     BulkData,
     Cards,
