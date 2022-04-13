@@ -36,6 +36,7 @@ Data:
 "format" = "format_response"  
 "dir" = "direction"  
 "set" = "set_code"  
+"type" = "api_type"
 
 Objects:  
 "list" = "APIList"  

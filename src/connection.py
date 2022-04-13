@@ -7,7 +7,20 @@ from httpx import AsyncClient
 from httpx_caching import CachingClient
 from loguru import logger
 
-from schema import APIList, BulkData, Cards, CardSymbols, Catalogs, List_of_Catalogs, Rulings, Sets
+from schema import (
+    APIList,
+    BulkData,
+    Cards,
+    CardSymbols,
+    Catalogs,
+    List_of_Card_Identifiers,
+    List_of_Catalogs,
+    List_of_Platforms,
+    ManaCost,
+    Rulings,
+    Rulings_Platforms,
+    Sets,
+)
 
 
 async def ratelimit_request(request):
@@ -98,13 +111,27 @@ class ScryfallConnection:
         else:
             return returnable
 
-    # Bulk Data / Catalog
+    # Sets
 
-    async def bulk_data(self) -> APIList:
+    async def sets(self) -> APIList:
         returnable_data = "data"
-        bulk_data = await self.get("bulk-data", return_data=returnable_data)
-        returnable = APIList(**bulk_data)
-        return returnable
+        all_sets = await self.get("sets", return_data=returnable_data)
+        return APIList(**all_sets)
+
+    async def set_by_code(self, set_code: str) -> Sets:
+        returnable_data = None
+        set_data = await self.get(f"sets/{set_code}", return_data=returnable_data)
+        return Sets(**set_data)
+
+    async def set_by_tcgplayer(self, tcgplayer_id: str) -> Sets:
+        returnable_data = None
+        set_data = await self.get(f"sets/tcgplayer/{tcgplayer_id}", return_data=returnable_data)
+        return Sets(**set_data)
+
+    async def set_by_id(self, api_id: str) -> Sets:
+        returnable_data = None
+        set_data = await self.get(f"sets/{api_id}", return_data=returnable_data)
+        return Sets(**set_data)
 
     # Cards
 
@@ -159,10 +186,13 @@ class ScryfallConnection:
         else:
             return None
 
-    async def cards_autocomplete(self, q: str) -> Dict[str, List[str] | str | int]:  # TODO: double check this
+    async def cards_autocomplete(self, q: str) -> Catalogs:
         returnable_data = "data"
+        if len(q) <= 2:
+            raise ValueError("Must query for more than 2 characters.")
         params = {"q": q}
-        return await self.get("cards/autocomplete", params=params, return_data=returnable_data)
+        autocompletes = await self.get("cards/autocomplete", params=params, return_data=returnable_data)
+        return Catalogs(**autocompletes)
 
     async def cards_random(self, q: str, format_response: str = "json", face: str = None, version: str = None) -> Cards:
         if format_response is not "json":
@@ -177,8 +207,19 @@ class ScryfallConnection:
         random_card = await self.get("cards/random", params=params, return_data=returnable_data)
         return Cards(**random_card)
 
-    async def cards_collection(self, identifiers: List[Dict[str, str]]) -> APIList:
+    async def cards_collection(self, identifiers: List[Dict[str, str | int]]) -> APIList:
         returnable_data = "data"
+        for identifier in identifiers:
+            for k in identifier:
+                if k not in List_of_Card_Identifiers:
+                    raise ValueError(f"{k} is not a valid card identifier to search")
+                if k is "set":
+                    logger.info(f"name set: {'name' not in identifier}")
+                    logger.info(f"set number: {'collector_number' not in identifier}")
+                    if not ("name" in identifier or "collector_number" in identifier):
+                        raise ValueError(f"{identifier} must include 'set' and 'name' or 'set' and 'collector_number'")
+                if k is "collector_number" and "set" not in identifier:
+                    raise ValueError(f"{k} must also include 'set'")
         data = {"identifiers": identifiers}
         list_of_cards = await self.post("cards/collection", json_data=data)
         returnable = APIList(**list_of_cards)
@@ -214,6 +255,8 @@ class ScryfallConnection:
     ) -> Optional[Cards]:
         if format_response != "json":
             raise NotImplementedError
+        if platform_id not in List_of_Platforms:
+            raise ValueError(f"{platform} is not a valid platform to pull ID's from")
         if platform not in self.platforms:
             raise ValueError(f"{platform} not in {self.platforms}")
         returnable_data = None
@@ -233,19 +276,26 @@ class ScryfallConnection:
         card_data = await self.get(f"cards/{api_id}", return_data=returnable_data)
         return Cards(**card_data)
 
-    # Sets
-
-    async def set_by_id(self, api_id: str) -> Sets:
-        returnable_data = None
-        set_data = await self.get(f"sets/{api_id}", return_data=returnable_data)
-        return Sets(**set_data)
-
-    async def set_by_code(self, set_code: str) -> Sets:
-        returnable_data = None
-        set_data = await self.get(f"sets/{set_code}", return_data=returnable_data)
-        return Sets(**set_data)
-
     # Misc
+
+    async def rulings_by_platform_id(self, platform: str, api_id: str) -> APIList:
+        returnable_data = "data"
+        if platform not in Rulings_Platforms:
+            raise ValueError(f"{platform} not a valid platform for IDs")
+        card_rulings = await self.get(f"cards/{platform}/{api_id}/rulings")
+        returnable = APIList(**card_rulings)
+        return returnable
+
+    async def rulings_by_set_number(self, set_code: str, set_number: str) -> APIList:
+        returnable_data = "data"
+        card_rulings = await self.get(f"cards/{set_code}/{set_number}/rulings")
+        returnable = APIList(**card_rulings)
+
+    async def rulings_by_api_id(self, set_code: str, card_num: str | int) -> APIList:
+        returnable_data = "data"
+        card_rulings = await self.get(f"cards/{set_code}/{card_num}/rulings", return_data=returnable_data)
+        returnable = APIList(**card_rulings)
+        return returnable
 
     async def symbology(self) -> APIList:
         returnable_data = "data"
@@ -253,11 +303,11 @@ class ScryfallConnection:
         returnable = APIList(**symbol_data)
         return returnable
 
-    async def rulings(self, set_code: str, card_num: str | int) -> APIList:
-        returnable_data = "data"
-        card_rulings = await self.get(f"cards/{set_code}/{card_num}/rulings", return_data=returnable_data)
-        returnable = APIList(**card_rulings)
-        return returnable
+    async def parse_mana(self, cost: str) -> ManaCost:
+        returnable_data = None
+        params = {"cost": cost}
+        mana_cost = await self.get("/symbology/parse-mana", params=params, return_data=returnable_data)
+        return ManaCost(**mana_cost)
 
     async def catalogs(self, catalog: str) -> Catalogs:
         if catalog not in List_of_Catalogs:
@@ -265,3 +315,21 @@ class ScryfallConnection:
         returnable_data = None
         returnable = await self.get(f"catalog/{catalog}", return_data=returnable_data)
         return Catalogs(**returnable)
+
+    # Bulk Data / Catalog
+
+    async def bulk_data(self) -> APIList:
+        returnable_data = "data"
+        bulk_data_list = await self.get("bulk-data", return_data=returnable_data)
+        returnable = APIList(**bulk_data_list)
+        return returnable
+
+    async def bulk_data_by_id(self, api_id: str) -> BulkData:
+        returnable_data = None
+        bulk_data = await self.get(f"bulk-data/{api_id}", return_data=returnable_data)
+        return BulkData(**bulk_data)
+
+    async def bulk_data_by_type(self, api_type: str) -> BulkData:
+        returnable_data = None
+        bulk_data = await self.get(f"bulk-data/{api_type}", return_data=returnable_data)
+        return BulkData(**bulk_data)

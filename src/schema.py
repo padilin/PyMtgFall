@@ -222,6 +222,17 @@ class CardSymbols:
 
 
 @dataclass
+class ManaCost:
+    obj: str
+    cost: str
+    colors: List[str]
+    cmc: int
+    colorless: bool
+    monocolored: bool
+    multicolored: bool
+
+
+@dataclass
 class Rulings:
     source: str
     published_at: str
@@ -244,7 +255,9 @@ class Catalogs:
 class APIList:
     data: List[
         Dict[str, Any]
-        | Type[APIList | Cards | CardSymbols | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs]
+        | Type[
+            APIList | Cards | CardSymbols | ManaCost | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs
+        ]
     ]
 
     # Nullable
@@ -269,13 +282,15 @@ class APIList:
 
 
 Object_Map: Dict[
-    str, Type[APIList | Cards | CardSymbols | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs]
+    str,
+    Type[APIList | Cards | CardSymbols | ManaCost | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs],
 ] = {
     "set": Sets,
     "list": APIList,
     "card": Cards,
     "ruling": Rulings,
     "card_symbol": CardSymbols,
+    "mana_cost": ManaCost,
     "card_face": CardFaces,
     "related_card": RelatedCards,
     "bulk_data": BulkData,
@@ -300,4 +315,32 @@ List_of_Catalogs: List[str] = [
     "keyword-abilities",
     "keyword-actions",
     "ability-words",
+]
+
+
+List_of_Platforms: List[str] = [
+    "multiverse",
+    "mtgo",
+    "arena",
+    "tcgplayer",
+    "cardmarket",
+]
+
+
+List_of_Card_Identifiers: List[str] = [
+    "id",
+    "mtgo_id",
+    "multiverse_id",
+    "oracle_id",
+    "illustration_id",
+    "name",
+    "set",
+    "collector_number",
+]
+
+
+Rulings_Platforms: List[str] = [
+    "multiverse",
+    "mtgo",
+    "arena",
 ]
