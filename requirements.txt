@@ -50,6 +50,6 @@ toml==0.10.2; python_version >= "3.7" and python_full_version < "3.0.0" or pytho
 tomli==2.0.1; python_version < "3.11" and python_full_version >= "3.6.2" and python_version >= "3.7"
 trio==0.20.0; python_version >= "3.7"
 typing-extensions==4.1.1; python_version >= "3.6"
-virtualenv==20.14.0; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.7"
+virtualenv==20.14.1; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.7"
 win32-setctime==1.1.0; sys_platform == "win32" and python_version >= "3.5"
 wrapt==1.14.0; python_full_version >= "3.6.2"

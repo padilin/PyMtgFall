@@ -10,6 +10,7 @@ httpx = "^0.22.0"
 loguru = "^0.6.0"
 trio = "^0.20.0"
 httpx-caching = "^0.1a2"
+pytest = "^7.1.1"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.18.1"
@@ -37,6 +38,9 @@ files = ["src"]
 
 [tool.pytest.ini_options]
 minversion = 7.0
+addopts = "-ra "
+testpaths = ["tests"]
+required_plugins = ["pytest-httpx"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
