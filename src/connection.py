@@ -195,7 +195,7 @@ class ScryfallConnection:
         return Catalogs(**autocompletes)
 
     async def cards_random(self, q: str, format_response: str = "json", face: str = None, version: str = None) -> Cards:
-        if format_response is not "json":
+        if format_response != "json":
             raise NotImplementedError
         returnable_data = None
         params = {
@@ -213,12 +213,12 @@ class ScryfallConnection:
             for k in identifier:
                 if k not in List_of_Card_Identifiers:
                     raise ValueError(f"{k} is not a valid card identifier to search")
-                if k is "set":
+                if k == "set":
                     logger.info(f"name set: {'name' not in identifier}")
                     logger.info(f"set number: {'collector_number' not in identifier}")
                     if not ("name" in identifier or "collector_number" in identifier):
                         raise ValueError(f"{identifier} must include 'set' and 'name' or 'set' and 'collector_number'")
-                if k is "collector_number" and "set" not in identifier:
+                if k == "collector_number" and "set" not in identifier:
                     raise ValueError(f"{k} must also include 'set'")
         data = {"identifiers": identifiers}
         list_of_cards = await self.post("cards/collection", json_data=data)
