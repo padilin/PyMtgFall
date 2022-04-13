@@ -8,8 +8,8 @@ from connection import ScryfallConnection
 
 async def main():
     Thingy = ScryfallConnection()
-    datas = await Thingy.cards_search("c:white cmc:1")
-    logger.debug(len(datas.data))
+    datas = await Thingy.catalogs("powers")
+    logger.debug(datas.data)
 
 
 trio.run(main)

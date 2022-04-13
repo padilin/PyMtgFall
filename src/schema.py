@@ -281,3 +281,23 @@ Object_Map: Dict[
     "bulk_data": BulkData,
     "catalog": Catalogs,
 }
+
+
+List_of_Catalogs: List[str] = [
+    "card-names",
+    "artist-names",
+    "word-bank",
+    "creature-types",
+    "planeswalker-types",
+    "land-types",
+    "artifact-types",
+    "enchantment-types",
+    "spell-types",
+    "powers",
+    "toughnesses",
+    "loyalties",
+    "watermarks",
+    "keyword-abilities",
+    "keyword-actions",
+    "ability-words",
+]

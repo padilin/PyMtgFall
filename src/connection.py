@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from httpx_caching import CachingClient
 from loguru import logger
 
-from schema import APIList, BulkData, Cards, CardSymbols, Rulings, Sets
+from schema import APIList, BulkData, Cards, CardSymbols, Catalogs, List_of_Catalogs, Rulings, Sets
 
 
 async def ratelimit_request(request):
@@ -249,12 +249,19 @@ class ScryfallConnection:
 
     async def symbology(self) -> APIList:
         returnable_data = "data"
-        symbol_data = await self.get("symbology")
+        symbol_data = await self.get("symbology", return_data=returnable_data)
         returnable = APIList(**symbol_data)
         return returnable
 
     async def rulings(self, set_code: str, card_num: str | int) -> APIList:
         returnable_data = "data"
-        card_rulings = await self.get(f"cards/{set_code}/{card_num}/rulings")
+        card_rulings = await self.get(f"cards/{set_code}/{card_num}/rulings", return_data=returnable_data)
         returnable = APIList(**card_rulings)
         return returnable
+
+    async def catalogs(self, catalog: str) -> Catalogs:
+        if catalog not in List_of_Catalogs:
+            raise ValueError(f"{catalog} is not a valid catalog")
+        returnable_data = None
+        returnable = await self.get(f"catalog/{catalog}", return_data=returnable_data)
+        return Catalogs(**returnable)
