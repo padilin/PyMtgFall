@@ -22,7 +22,7 @@ class BulkData:  # ignore[too-many-instance-attributes]
 
 
 @dataclass
-class RelatedCard:  # ignore[too-many-instance-attributes]
+class RelatedCards:  # ignore[too-many-instance-attributes]
     api_id: str
     obj: str
     component: str
@@ -32,7 +32,7 @@ class RelatedCard:  # ignore[too-many-instance-attributes]
 
 
 @dataclass
-class CardFace:  # ignore[too-many-instance-attributes]
+class CardFaces:  # ignore[too-many-instance-attributes]
     mana_cost: str
     name: str
     obj: str
@@ -123,8 +123,8 @@ class Cards:  # ignore[too-many-instance-attributes]
     cardmarket_id: Optional[int] = None
 
     # Nullable Gameplay Fields
-    all_parts: Optional[List[Union[RelatedCard, Dict[str, str]]]] = None
-    card_faces: Optional[List[Union[CardFace, Dict[str, str]]]] = None
+    all_parts: Optional[List[Union[RelatedCards, Dict[str, str]]]] = None
+    card_faces: Optional[List[Union[CardFaces, Dict[str, str]]]] = None
     color_indicator: Optional[str] = None
     colors: Optional[str] = None
     edhrec_rank: Optional[int] = None
@@ -165,13 +165,13 @@ class Cards:  # ignore[too-many-instance-attributes]
         if self.all_parts:
             returnable = []
             for part in self.all_parts:
-                returnable.append(RelatedCard(**part))
+                returnable.append(RelatedCards(**part))
             self.all_parts = returnable
 
         if self.card_faces:
             returnable = []
             for face in self.card_faces:
-                returnable.append(CardFace(**face))
+                returnable.append(CardFaces(**face))
             self.card_faces = returnable
 
 
@@ -233,8 +233,19 @@ class Rulings:
 
 
 @dataclass
+class Catalogs:
+    obj: str
+    uri: str
+    total_values: int
+    data: List[str]
+
+
+@dataclass
 class APIList:
-    data: List[Dict[str, Any]]
+    data: List[
+        Dict[str, Any]
+        | Type[APIList | Cards | CardSymbols | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs]
+    ]
 
     # Nullable
     has_more: bool = False
@@ -248,7 +259,6 @@ class APIList:
 
     def __post_init__(self):
         temp_data = list()
-        logger.debug(f"This is obj processing: {self.obj=}")
         for item in self.data:
             try:
                 data_type_class = Object_Map[item["obj"]]
@@ -258,13 +268,16 @@ class APIList:
         self.data = temp_data
 
 
-Object_Map: Dict[str, Type[Cards | CardSymbols | Sets | CardFace | Rulings | RelatedCard | BulkData]] = {
+Object_Map: Dict[
+    str, Type[APIList | Cards | CardSymbols | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs]
+] = {
     "set": Sets,
-    "list": List,
+    "list": APIList,
     "card": Cards,
-    "rulings": Rulings,
-    "symbology": CardSymbols,
-    "": CardFace,
-    "": RelatedCard,
-    "": BulkData,
+    "ruling": Rulings,
+    "card_symbol": CardSymbols,
+    "card_face": CardFaces,
+    "related_card": RelatedCards,
+    "bulk_data": BulkData,
+    "catalog": Catalogs,
 }
