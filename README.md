@@ -8,7 +8,8 @@
 1. Install [Poetry](https://python-poetry.org/docs/master/#installing-with-the-official-installer)
 2. Optional: Set poetry to make an in project venv with `poetry config virtualenvs.in-project true`
 3. Run `poetry install`
-4. TODO: steps to run
+4. Run `poetry run pre-commit install`
+5. TODO: steps to run
 
 
 # Committing:
