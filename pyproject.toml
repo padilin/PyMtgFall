@@ -32,12 +32,21 @@ target-version = ['py38', 'py39', 'py310']
 profile = "black"
 line_length = 120
 
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length = 120
+disable = "C0114, C0115, C0116, R0902, R0904, R0913"
+
 [tool.mypy]
 pretty = true
 show_absolute_path = true
 show_column_numbers = true
 show_error_codes = true
 files = ["src"]
+
+[[tool.mypy.overrides]]
+module = 'trio'
+ignore_missing_imports = true
+
 
 [tool.pytest.ini_options]
 minversion = 7.0

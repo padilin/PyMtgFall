@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Type, Union
-
-from loguru import logger
+from typing import Any, Dict, List, Optional, Union
 
 
 @dataclass
@@ -159,7 +157,7 @@ class Cards:  # ignore[too-many-instance-attributes]
     nonfoil: Optional[bool] = None
     artist_ids: Optional[List[str]] = None
     card_back_id: Optional[str] = None  # Can be null?
-    purchase_uris: List[str] = None  # Can be null?
+    purchase_uris: Optional[List[str]] = None  # Can be null?
 
     def __post_init__(self):
         if self.all_parts:
@@ -176,7 +174,7 @@ class Cards:  # ignore[too-many-instance-attributes]
 
 
 @dataclass
-class Sets:
+class Sets:  # ignore[too-many-instance-attributes]
     api_id: str
     code: str
     name: str
@@ -204,7 +202,7 @@ class Sets:
 
 
 @dataclass
-class CardSymbols:
+class CardSymbols:  # ignore[too-many-instance-attributes]
     symbol: str
     english: str
     transposable: bool
@@ -218,7 +216,7 @@ class CardSymbols:
     svg_uri: Optional[str] = None
 
     # Undocumented
-    obj: str = None
+    obj: Optional[str] = None
 
 
 @dataclass
@@ -255,9 +253,16 @@ class Catalogs:
 class APIList:
     data: List[
         Dict[str, Any]
-        | Type[
-            APIList | Cards | CardSymbols | ManaCost | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs
-        ]
+        | APIList
+        | Cards
+        | CardSymbols
+        | ManaCost
+        | Sets
+        | CardFaces
+        | Rulings
+        | RelatedCards
+        | BulkData
+        | Catalogs
     ]
 
     # Nullable
@@ -271,7 +276,10 @@ class APIList:
     not_found: Optional[List[str]] = None
 
     def __post_init__(self):
-        temp_data = list()
+        temp_data: list[
+            APIList | Cards | CardSymbols | ManaCost | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs
+        ] = []
+        item: dict[str, Any]
         for item in self.data:
             try:
                 data_type_class = Object_Map[item["obj"]]
@@ -281,10 +289,7 @@ class APIList:
         self.data = temp_data
 
 
-Object_Map: Dict[
-    str,
-    Type[APIList | Cards | CardSymbols | ManaCost | Sets | CardFaces | Rulings | RelatedCards | BulkData | Catalogs],
-] = {
+Object_Map: Dict[str, Any] = {
     "set": Sets,
     "list": APIList,
     "card": Cards,

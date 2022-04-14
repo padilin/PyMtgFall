@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+import httpx
 import trio
 from httpx import AsyncClient
 from httpx_caching import CachingClient
@@ -11,21 +12,20 @@ from .schema import (
     APIList,
     BulkData,
     Cards,
-    CardSymbols,
     Catalogs,
     List_of_Card_Identifiers,
     List_of_Catalogs,
     List_of_Platforms,
     ManaCost,
-    Rulings,
     Rulings_Platforms,
     Sets,
 )
 
 
-async def ratelimit_request(request):
-    logger.warning("Self Rate Limiting for 500ms")
-    await trio.sleep(0.5)
+async def ratelimit_request(request: httpx.Request):
+    sleep = 0.5
+    logger.warning(f"Self Rate Limiting for {sleep*1000}ms for {request.method} {request.url}")
+    await trio.sleep(seconds=sleep)
 
 
 async def raise_on_4xx_5xx(response):
@@ -48,16 +48,16 @@ class ScryfallConnection:
         params: Optional[Dict[str, Any]] = None,
         return_data: Optional[str] = "data",
         pagination: bool = True,
-    ) -> Dict[str, Any] | List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         if params is None:
-            params = dict()
+            params = {}
         logger.info(f"GET to {self.url}{endpoint}")
         async with CachingClient(
             AsyncClient(event_hooks={"request": [ratelimit_request], "response": [raise_on_4xx_5xx]})
         ) as client:
-            r = await client.get(f"{self.url}{endpoint}", params=params)
-            logger.info(f"GET {r.status_code} at {r.url}")
-            sanitized = await self.sanitize_data(r.json())
+            resp = await client.get(f"{self.url}{endpoint}", params=params)
+            logger.info(f"GET {resp.status_code} at {resp.url}")
+            sanitized = await self.sanitize_data(resp.json())
             if pagination:
                 returnable = await self.pagination_list(return_data, sanitized)
                 return returnable
@@ -68,37 +68,34 @@ class ScryfallConnection:
         async with CachingClient(
             AsyncClient(event_hooks={"request": [ratelimit_request], "response": [raise_on_4xx_5xx]})
         ) as client:
-            r = await client.post(f"{self.url}{endpoint}", json=json_data)
-            logger.info(f"POST {r.status_code} at {r.url}")
-            sanitized = await self.sanitize_data(r.json())
+            resp = await client.post(f"{self.url}{endpoint}", json=json_data)
+            logger.info(f"POST {resp.status_code} at {resp.url}")
+            sanitized = await self.sanitize_data(resp.json())
             returnable = await self.pagination_list(return_data, sanitized)
             return returnable
 
-    async def sanitize_data(self, data: Dict[str, Any] | List[Dict[str, Any]]) -> Dict[str, Any] | List[Dict[str, Any]]:
+    async def sanitize_data(self, data: Any) -> Any:
         if isinstance(data, list):
-            returnable = list()
+            returnable_list: List[Any] = []
             for item in data:
                 if isinstance(item, dict):
-                    returnable.append(await self.sanitize_data(item))
+                    returnable_list.append(await self.sanitize_data(item))
                 else:
-                    returnable.append(item)
-            return returnable
-        elif isinstance(data, dict):
+                    returnable_list.append(item)
+            return returnable_list
+        if isinstance(data, dict):
             if "id" in data:
                 data["api_id"] = data.pop("id")
             if "object" in data:
                 data["obj"] = data.pop("object")
-            returnable = dict()
-            for k, v in data.items():
-                returnable[k] = await self.sanitize_data(v)
-            return returnable
-        else:
-            return data
+            returnable_dict = {}
+            for key, value in data.items():
+                returnable_dict[key] = await self.sanitize_data(value)
+            return returnable_dict
+        return data
 
-    async def pagination_list(
-        self, return_data: Optional[str], returnable: Dict[str, Any] | List[Dict[str, Any]]
-    ) -> Dict[str, Any] | List[Dict[str, Any]]:
-        if "has_more" in returnable and "next_page" in returnable:
+    async def pagination_list(self, return_data: Optional[str], returnable: Dict[str, Any]) -> Dict[str, Any]:
+        if "has_more" in returnable and "next_page" in returnable and isinstance(return_data, str):
             has_more = True
             url = returnable["next_page"].replace(self.url, "")
             while has_more:
@@ -108,8 +105,7 @@ class ScryfallConnection:
                 if "next_page" in pagination:
                     url = pagination["next_page"].replace(self.url, "")
             return returnable
-        else:
-            return returnable
+        return returnable
 
     # Sets
 
@@ -137,7 +133,7 @@ class ScryfallConnection:
 
     async def cards_search(
         self,
-        q: str,
+        query: str,
         unique: str = "cards",
         order: str = "name",
         direction: str = "auto",
@@ -148,7 +144,7 @@ class ScryfallConnection:
         """https://scryfall.com/docs/api/cards/search"""
         returnable_data = "data"
         params = {
-            "q": q,
+            "q": query,
             "unique": unique,
             "order": order,
             "dir": direction,
@@ -169,7 +165,7 @@ class ScryfallConnection:
         face: str = None,
         version: str = None,
     ) -> Optional[Cards]:
-        if format != "json":
+        if format_response != "json":
             raise NotImplementedError
         returnable_data = None
         params = {
@@ -183,23 +179,24 @@ class ScryfallConnection:
         named_card_data = await self.get("cards/named", params=params, return_data=returnable_data)
         if named_card_data:
             return Cards(**named_card_data)
-        else:
-            return None
+        return None
 
-    async def cards_autocomplete(self, q: str) -> Catalogs:
+    async def cards_autocomplete(self, query: str) -> Catalogs:
         returnable_data = "data"
-        if len(q) <= 2:
+        if len(query) <= 2:
             raise ValueError("Must query for more than 2 characters.")
-        params = {"q": q}
+        params = {"q": query}
         autocompletes = await self.get("cards/autocomplete", params=params, return_data=returnable_data)
         return Catalogs(**autocompletes)
 
-    async def cards_random(self, q: str, format_response: str = "json", face: str = None, version: str = None) -> Cards:
+    async def cards_random(
+        self, query: str, format_response: str = "json", face: str = None, version: str = None
+    ) -> Cards:
         if format_response != "json":
             raise NotImplementedError
         returnable_data = None
         params = {
-            "q": q,
+            "q": query,
             "format": format_response,
             "face": face,
             "version": version,
@@ -221,7 +218,7 @@ class ScryfallConnection:
                 if k == "collector_number" and "set" not in identifier:
                     raise ValueError(f"{k} must also include 'set'")
         data = {"identifiers": identifiers}
-        list_of_cards = await self.post("cards/collection", json_data=data)
+        list_of_cards = await self.post("cards/collection", json_data=data, return_data=returnable_data)
         returnable = APIList(**list_of_cards)
         return returnable
 
@@ -247,8 +244,7 @@ class ScryfallConnection:
         )
         if named_card_data:
             return Cards(**named_card_data)
-        else:
-            return None
+        return None
 
     async def card_by_platform_id(
         self, platform: str, platform_id: str, format_response: str = "json", face: str = None, version: str = None
@@ -268,8 +264,7 @@ class ScryfallConnection:
         named_card_data = await self.get(f"cards/{platform}/{platform_id}", params=params, return_data=returnable_data)
         if named_card_data:
             return Cards(**named_card_data)
-        else:
-            return None
+        return None
 
     async def card_by_api_id(self, api_id: str) -> Cards:
         returnable_data = None
@@ -282,14 +277,15 @@ class ScryfallConnection:
         returnable_data = "data"
         if platform not in Rulings_Platforms:
             raise ValueError(f"{platform} not a valid platform for IDs")
-        card_rulings = await self.get(f"cards/{platform}/{api_id}/rulings")
+        card_rulings = await self.get(f"cards/{platform}/{api_id}/rulings", return_data=returnable_data)
         returnable = APIList(**card_rulings)
         return returnable
 
     async def rulings_by_set_number(self, set_code: str, set_number: str) -> APIList:
         returnable_data = "data"
-        card_rulings = await self.get(f"cards/{set_code}/{set_number}/rulings")
+        card_rulings = await self.get(f"cards/{set_code}/{set_number}/rulings", return_data=returnable_data)
         returnable = APIList(**card_rulings)
+        return returnable
 
     async def rulings_by_api_id(self, set_code: str, card_num: str | int) -> APIList:
         returnable_data = "data"

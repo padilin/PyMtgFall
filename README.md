@@ -46,7 +46,8 @@ Data:
 "format" = "format_response"  
 "dir" = "direction"  
 "set" = "set_code"  
-"type" = "api_type"
-
+"type" = "api_type"  
+"q" = "query" # One letter variables are not ideal  
+  
 Objects:  
 "list" = "APIList"  
