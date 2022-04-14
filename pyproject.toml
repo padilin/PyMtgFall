@@ -21,6 +21,8 @@ pylint = "^2.13.5"
 pytest = "^7.1.1"
 pytest-httpx = "^0.20.0"
 pytest-trio = "^0.7.0"
+coverage = {extras = ["toml"], version = "^6.3.2"}
+pytest-cov = "^3.0.0"
 
 [tool.black]
 line-length = 120
@@ -39,9 +41,19 @@ files = ["src"]
 
 [tool.pytest.ini_options]
 minversion = 7.0
-addopts = "-ra "
+addopts = "-rA -v --cov src --cov-report html"
 testpaths = ["tests"]
-required_plugins = ["pytest-httpx", "pytest-trio"]
+required_plugins = ["pytest-httpx", "pytest-trio", "pytest-cov"]
+
+[tool.coverage.run]
+source = ["src/"]
+branch = true
+command_line = "html"
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+skip_empty = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
