@@ -22,25 +22,25 @@ from .schema import (
 )
 
 
-async def ratelimit_request(request: httpx.Request):
-    sleep = 0.5
-    logger.warning(f"Self Rate Limiting for {sleep*1000}ms for {request.method} {request.url}")
-    await trio.sleep(seconds=sleep)
-
-
-async def raise_on_4xx_5xx(response):
-    if response.status_code >= 400:
-        error_response = await response.aread()
-        logger.error(f"Direct API error: {error_response.decode('utf-8')}")
-    response.raise_for_status()
-
-
 class ScryfallConnection:
     def __init__(self):
         self.url: str = "https://api.scryfall.com/"
         self.platforms: List[str] = ["multiverse", "mtgo", "arena", "tcgplayer", "cardmarket"]
+        self.sleep: float = 0.5
 
     # Utilities
+
+    @staticmethod
+    async def raise_on_4xx_5xx(response):
+        if response.status_code >= 400:
+            error_response = await response.aread()
+            logger.error(f"Direct API error: {error_response.decode('utf-8')}")
+        response.raise_for_status()
+
+    async def ratelimit_request(self, request: httpx.Request):
+        sleep = self.sleep
+        logger.warning(f"Self Rate Limiting for {sleep * 1000}ms for {request.method} {request.url}")
+        await trio.sleep(seconds=sleep)
 
     async def get(
         self,
@@ -53,7 +53,7 @@ class ScryfallConnection:
             params = {}
         logger.info(f"GET to {self.url}{endpoint}")
         async with CachingClient(
-            AsyncClient(event_hooks={"request": [ratelimit_request], "response": [raise_on_4xx_5xx]})
+            AsyncClient(event_hooks={"request": [self.ratelimit_request], "response": [self.raise_on_4xx_5xx]})
         ) as client:
             resp = await client.get(f"{self.url}{endpoint}", params=params)
             logger.info(f"GET {resp.status_code} at {resp.url}")
@@ -66,7 +66,7 @@ class ScryfallConnection:
     async def post(self, endpoint: str, json_data: Dict[str, Any], return_data: Optional[str] = "data"):
         logger.info(f"POST to {self.url}{endpoint}")
         async with CachingClient(
-            AsyncClient(event_hooks={"request": [ratelimit_request], "response": [raise_on_4xx_5xx]})
+            AsyncClient(event_hooks={"request": [self.ratelimit_request], "response": [self.raise_on_4xx_5xx]})
         ) as client:
             resp = await client.post(f"{self.url}{endpoint}", json=json_data)
             logger.info(f"POST {resp.status_code} at {resp.url}")
