@@ -14,7 +14,7 @@ def scryfall_conn():
 
 
 @pytest.mark.trio
-async def test_get_4xx_5xx_triggers(httpx_mock: HTTPXMock, scryfall_conn: ScryfallConnection):
+async def test_get_4xx_5xx_triggers(httpx_mock: HTTPXMock, scryfall_conn: ScryfallConnection, autojump_clock):
     httpx_mock.add_response(
         url="https://api.scryfall.com/symbology",
         json={
@@ -37,13 +37,13 @@ async def test_get_4xx_5xx_triggers(httpx_mock: HTTPXMock, scryfall_conn: Scryfa
 
 class TestSanitizeData:
     @pytest.mark.trio
-    async def test_list_sanitize_data_pass(self, scryfall_conn: ScryfallConnection):
+    async def test_list_sanitize_data_pass(self, scryfall_conn: ScryfallConnection, autojump_clock):
         unsanitary_list_data = ["this", "is", {"name": "sparta", "id": 300, "object": "army"}, 300]
         sanitary_list_data = ["this", "is", {"name": "sparta", "api_id": 300, "obj": "army"}, 300]
         assert await scryfall_conn.sanitize_data(unsanitary_list_data) == sanitary_list_data
 
     @pytest.mark.trio
-    async def test_dict_sanitize_data_pass(self, scryfall_conn: ScryfallConnection):
+    async def test_dict_sanitize_data_pass(self, scryfall_conn: ScryfallConnection, autojump_clock):
         unsanitary_dict_data = {
             "name": "Sonic",
             "object": "creature",
@@ -59,6 +59,16 @@ class TestSanitizeData:
         assert await scryfall_conn.sanitize_data(unsanitary_dict_data) == sanitary_dict_data
 
     @pytest.mark.trio
-    async def test_sanitary_data_passthrough_pass(self, scryfall_conn: ScryfallConnection):
+    async def test_sanitary_data_passthrough_pass(self, scryfall_conn: ScryfallConnection, autojump_clock):
         sanitary_data = ["str", 147, ["hello", "sanitary"], {"good": "data", "is": 104}]
         assert await scryfall_conn.sanitize_data(sanitary_data) == sanitary_data
+
+
+class TestPaginationList:
+    @pytest.mark.trio
+    async def test_not_paginated(self, scryfall_conn: ScryfallConnection, autojump_clock):
+        non_paginated_response = {
+            "name": "dr who",
+            "vehicle": "tardis",
+        }
+        assert await scryfall_conn.pagination_list(return_data=None, returnable=non_paginated_response) == non_paginated_response
