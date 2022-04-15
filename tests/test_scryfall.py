@@ -1,13 +1,11 @@
-from loguru import logger
-
 import httpx
 import pytest
-
 from httpx import HTTPStatusError
+from loguru import logger
 from pytest_httpx import HTTPXMock
 
-import src
-from src.connection import ScryfallConnection
+import pymtgfall
+from pymtgfall.connection import ScryfallConnection
 
 
 @pytest.fixture

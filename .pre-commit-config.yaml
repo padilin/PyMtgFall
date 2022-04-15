@@ -17,27 +17,27 @@ repos:
     hooks:
       - id: system
         name: Black
-        entry: poetry run black src/
+        entry: poetry run black pymtgfall/
         pass_filenames: false
         language: system
   - repo: local
     hooks:
       - id: system
         name: isort
-        entry: poetry run isort src/
+        entry: poetry run isort pymtgfall/
         pass_filenames: false
         language: system
   - repo: local
     hooks:
       - id: system
         name: MyPy
-        entry: poetry run mypy
+        entry: poetry run mypy pymtgfall/
         pass_filenames: false
         language: system
   - repo: local
     hooks:
       - id: system
         name: Pylint
-        entry: poetry run pylint src/
+        entry: poetry run pylint pymtgfall/
         pass_filenames: false
         language: system
