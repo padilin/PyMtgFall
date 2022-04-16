@@ -1,7 +1,29 @@
-
-# Dev Getting Started
+# PyMtgFall  
+This is a personal project to create a python library for easy access to scryfall.  
 
 ---
+# Road to v1.0.0  
+
+Features I want to ship with v1.0.0  
+- Potentially treat API errors the same as other data, as the API does?
+- Potentially deal with images?
+- Download Bulk Data and Switch automatically between  
+  1. Cache  
+  2. Downloaded Bulk Data  
+  3. Potentially download the Bulk Data  
+  4. Finally API  
+- 100% Code Coverage  
+  1. Tests (Mocked)  
+  2. Tests (Integration)  
+- 100% Typed  
+  1. MyPy  
+  2. Pylint  
+  3. Black  
+- Documentation  
+- To fill this list  
+
+---
+# Dev Getting Started
 
 ## Steps:
 
@@ -15,14 +37,14 @@
 9. On commit: see committing section
 
 
-# Committing:
+## Committing:
 
 This repo uses pre-commit to run Mypy, Pylint, Black, build requirements.txt, check pyproject.toml vs poetry, and isort at time of commit.  
 Commit will run black on all files, sort imports, and generate requirements.txt. Make sure requirements.txt is added and re-commit  
 This can be avoided by running `poetry run pre-commit`
 
 
-# Commands:
+## Commands:
 
 `poetry add/remove <library> [--dev]` to add or remove dev dependency.  
 `poetry run pytest` to run pytest with coverage and generate HTML report in htmlcov/  
@@ -30,12 +52,7 @@ This can be avoided by running `poetry run pre-commit`
 `poetry run pre-commit` to run all of the pre-commit checks. Will modify files and generate some.  
 `poetry run python <script>` to use the environment to run code.
 
-
-# Running Tests, Black, Pylint, etc.:
-
-Use `poetry run <program>` to use the correct environment.
-
-
+---
 # Changes from API
 
 Some words are reserved by python, so they are translated.  
