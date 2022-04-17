@@ -55,7 +55,7 @@ class ScryfallConnection:
             logger.info(f"GET {resp.status_code} at {resp.url}")
             return resp
 
-    async def get(
+    async def get_json(
         self,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
@@ -110,7 +110,7 @@ class ScryfallConnection:
             has_more = True
             url = returnable["next_page"].replace(self.url, "")
             while has_more:
-                pagination = await self.get(url, pagination=False)
+                pagination = await self.get_json(url, pagination=False)
                 returnable[return_data] += pagination[return_data]
                 has_more = pagination["has_more"]
                 if "next_page" in pagination:
@@ -122,22 +122,22 @@ class ScryfallConnection:
 
     async def sets(self) -> APIList:
         returnable_data = "data"
-        all_sets = await self.get("sets", return_data=returnable_data)
+        all_sets = await self.get_json("sets", return_data=returnable_data)
         return APIList(**all_sets)
 
     async def set_by_code(self, set_code: str) -> Sets:
         returnable_data = None
-        set_data = await self.get(f"sets/{set_code}", return_data=returnable_data)
+        set_data = await self.get_json(f"sets/{set_code}", return_data=returnable_data)
         return Sets(**set_data)
 
     async def set_by_tcgplayer(self, tcgplayer_id: str) -> Sets:
         returnable_data = None
-        set_data = await self.get(f"sets/tcgplayer/{tcgplayer_id}", return_data=returnable_data)
+        set_data = await self.get_json(f"sets/tcgplayer/{tcgplayer_id}", return_data=returnable_data)
         return Sets(**set_data)
 
     async def set_by_id(self, api_id: str) -> Sets:
         returnable_data = None
-        set_data = await self.get(f"sets/{api_id}", return_data=returnable_data)
+        set_data = await self.get_json(f"sets/{api_id}", return_data=returnable_data)
         return Sets(**set_data)
 
     # Cards
@@ -163,7 +163,7 @@ class ScryfallConnection:
             "include_multilinqual": include_multilinqual,
             "include_variations": include_variations,
         }
-        search_data = await self.get("cards/search", params=params, return_data=returnable_data)
+        search_data = await self.get_json("cards/search", params=params, return_data=returnable_data)
         returnable = APIList(**search_data)
         return returnable
 
@@ -187,7 +187,7 @@ class ScryfallConnection:
             "face": face,
             "version": version,
         }
-        named_card_data = await self.get("cards/named", params=params, return_data=returnable_data)
+        named_card_data = await self.get_json("cards/named", params=params, return_data=returnable_data)
         if named_card_data:
             return Cards(**named_card_data)
         return None
@@ -197,7 +197,7 @@ class ScryfallConnection:
         if len(query) <= 2:
             raise ValueError("Must query for more than 2 characters.")
         params = {"q": query}
-        autocompletes = await self.get("cards/autocomplete", params=params, return_data=returnable_data)
+        autocompletes = await self.get_json("cards/autocomplete", params=params, return_data=returnable_data)
         return Catalogs(**autocompletes)
 
     async def cards_random(
@@ -212,7 +212,7 @@ class ScryfallConnection:
             "face": face,
             "version": version,
         }
-        random_card = await self.get("cards/random", params=params, return_data=returnable_data)
+        random_card = await self.get_json("cards/random", params=params, return_data=returnable_data)
         return Cards(**random_card)
 
     async def cards_collection(self, identifiers: List[Dict[str, str | int]]) -> APIList:
@@ -250,7 +250,7 @@ class ScryfallConnection:
             "face": face,
             "version": version,
         }
-        named_card_data = await self.get(
+        named_card_data = await self.get_json(
             f"cards/{set_code}/{number}/{lang}", params=params, return_data=returnable_data
         )
         if named_card_data:
@@ -272,14 +272,16 @@ class ScryfallConnection:
             "face": face,
             "version": version,
         }
-        named_card_data = await self.get(f"cards/{platform}/{platform_id}", params=params, return_data=returnable_data)
+        named_card_data = await self.get_json(
+            f"cards/{platform}/{platform_id}", params=params, return_data=returnable_data
+        )
         if named_card_data:
             return Cards(**named_card_data)
         return None
 
     async def card_by_api_id(self, api_id: str) -> Cards:
         returnable_data = None
-        card_data = await self.get(f"cards/{api_id}", return_data=returnable_data)
+        card_data = await self.get_json(f"cards/{api_id}", return_data=returnable_data)
         return Cards(**card_data)
 
     # Misc
@@ -288,55 +290,55 @@ class ScryfallConnection:
         returnable_data = "data"
         if platform not in Rulings_Platforms:
             raise ValueError(f"{platform} not a valid platform for IDs")
-        card_rulings = await self.get(f"cards/{platform}/{api_id}/rulings", return_data=returnable_data)
+        card_rulings = await self.get_json(f"cards/{platform}/{api_id}/rulings", return_data=returnable_data)
         returnable = APIList(**card_rulings)
         return returnable
 
     async def rulings_by_set_number(self, set_code: str, set_number: str) -> APIList:
         returnable_data = "data"
-        card_rulings = await self.get(f"cards/{set_code}/{set_number}/rulings", return_data=returnable_data)
+        card_rulings = await self.get_json(f"cards/{set_code}/{set_number}/rulings", return_data=returnable_data)
         returnable = APIList(**card_rulings)
         return returnable
 
     async def rulings_by_api_id(self, set_code: str, card_num: str | int) -> APIList:
         returnable_data = "data"
-        card_rulings = await self.get(f"cards/{set_code}/{card_num}/rulings", return_data=returnable_data)
+        card_rulings = await self.get_json(f"cards/{set_code}/{card_num}/rulings", return_data=returnable_data)
         returnable = APIList(**card_rulings)
         return returnable
 
     async def symbology(self) -> APIList:
         returnable_data = "data"
-        symbol_data = await self.get("symbology", return_data=returnable_data)
+        symbol_data = await self.get_json("symbology", return_data=returnable_data)
         returnable = APIList(**symbol_data)
         return returnable
 
     async def parse_mana(self, cost: str) -> ManaCost:
         returnable_data = None
         params = {"cost": cost}
-        mana_cost = await self.get("/symbology/parse-mana", params=params, return_data=returnable_data)
+        mana_cost = await self.get_json("/symbology/parse-mana", params=params, return_data=returnable_data)
         return ManaCost(**mana_cost)
 
     async def catalogs(self, catalog: str) -> Catalogs:
         if catalog not in List_of_Catalogs:
             raise ValueError(f"{catalog} is not a valid catalog")
         returnable_data = None
-        returnable = await self.get(f"catalog/{catalog}", return_data=returnable_data)
+        returnable = await self.get_json(f"catalog/{catalog}", return_data=returnable_data)
         return Catalogs(**returnable)
 
     # Bulk Data / Catalog
 
     async def bulk_data(self) -> APIList:
         returnable_data = "data"
-        bulk_data_list = await self.get("bulk-data", return_data=returnable_data)
+        bulk_data_list = await self.get_json("bulk-data", return_data=returnable_data)
         returnable = APIList(**bulk_data_list)
         return returnable
 
     async def bulk_data_by_id(self, api_id: str) -> BulkData:
         returnable_data = None
-        bulk_data = await self.get(f"bulk-data/{api_id}", return_data=returnable_data)
+        bulk_data = await self.get_json(f"bulk-data/{api_id}", return_data=returnable_data)
         return BulkData(**bulk_data)
 
     async def bulk_data_by_type(self, api_type: str) -> BulkData:
         returnable_data = None
-        bulk_data = await self.get(f"bulk-data/{api_type}", return_data=returnable_data)
+        bulk_data = await self.get_json(f"bulk-data/{api_type}", return_data=returnable_data)
         return BulkData(**bulk_data)

@@ -31,7 +31,7 @@ async def test_get_4xx_5xx_triggers(httpx_mock: HTTPXMock, scryfall_conn: Scryfa
     )
 
     with pytest.raises(HTTPStatusError) as e_info:
-        data = await scryfall_conn.get("symbology")
+        data = await scryfall_conn.get_json("symbology")
         logger.info(data)
 
 
