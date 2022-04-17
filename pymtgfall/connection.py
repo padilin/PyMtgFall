@@ -42,26 +42,37 @@ class ScryfallConnection:
         logger.warning(f"Self Rate Limiting for {sleep * 1000}ms for {request.method} {request.url}")
         await trio.sleep(seconds=sleep)
 
+    async def _get(self, url: str, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None):
+        if params is None:
+            params = {}
+        if headers is None:
+            headers = {}
+        logger.info(f"GET to {url}")
+        async with CachingClient(
+            AsyncClient(event_hooks={"request": [self.ratelimit_request], "response": [self.raise_on_4xx_5xx]})
+        ) as client:
+            resp = await client.get(url, params=params, headers=headers)
+            logger.info(f"GET {resp.status_code} at {resp.url}")
+            return resp
+
     async def get(
         self,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, Any]] = None,
         return_data: Optional[str] = "data",
         pagination: bool = True,
     ) -> Dict[str, Any]:
         if params is None:
             params = {}
-        logger.info(f"GET to {self.url}{endpoint}")
-        async with CachingClient(
-            AsyncClient(event_hooks={"request": [self.ratelimit_request], "response": [self.raise_on_4xx_5xx]})
-        ) as client:
-            resp = await client.get(f"{self.url}{endpoint}", params=params)
-            logger.info(f"GET {resp.status_code} at {resp.url}")
-            sanitized = await self.sanitize_data(resp.json())
-            if pagination:
-                returnable = await self.pagination_list(return_data, sanitized)
-                return returnable
-            return sanitized
+        if headers is None:
+            headers = {}
+        resp = await self._get(url=f"{self.url}{endpoint}", params=params, headers=headers)
+        sanitized = await self.sanitize_data(resp.json())
+        if pagination:
+            returnable = await self.pagination_list(return_data, sanitized)
+            return returnable
+        return sanitized
 
     async def post(self, endpoint: str, json_data: Dict[str, Any], return_data: Optional[str] = "data"):
         logger.info(f"POST to {self.url}{endpoint}")
