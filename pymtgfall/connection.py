@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 import trio
@@ -25,7 +25,7 @@ from .schema import (
 class ScryfallConnection:
     def __init__(self):
         self.url: str = "https://api.scryfall.com/"
-        self.platforms: List[str] = ["multiverse", "mtgo", "arena", "tcgplayer", "cardmarket"]
+        self.platforms: list[str] = ["multiverse", "mtgo", "arena", "tcgplayer", "cardmarket"]
         self.sleep: float = 0.5
 
     # Utilities
@@ -42,7 +42,7 @@ class ScryfallConnection:
         logger.warning(f"Self Rate Limiting for {sleep * 1000}ms for {request.method} {request.url}")
         await trio.sleep(seconds=sleep)
 
-    async def _get(self, url: str, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None):
+    async def _get(self, url: str, params: dict[str, Any] | None = None, headers: dict[str, Any] | None = None):
         if params is None:
             params = {}
         if headers is None:
@@ -57,24 +57,37 @@ class ScryfallConnection:
 
     async def get_json(
         self,
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, Any]] = None,
-        return_data: Optional[str] = "data",
+        url: str,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+        return_data: str | None = "data",
         pagination: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if params is None:
             params = {}
         if headers is None:
             headers = {}
-        resp = await self._get(url=f"{self.url}{endpoint}", params=params, headers=headers)
+        resp = await self._get(url=url, params=params, headers=headers)
         sanitized = await self.sanitize_data(resp.json())
         if pagination:
             returnable = await self.pagination_list(return_data, sanitized)
             return returnable
         return sanitized
 
-    async def post(self, endpoint: str, json_data: Dict[str, Any], return_data: Optional[str] = "data"):
+    async def get_image(
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+    ) -> bytes:
+        if params is None:
+            params = {}
+        if headers is None:
+            headers = {}
+        resp = await self._get(url=url, params=params, headers=headers)
+        return resp.content
+
+    async def post(self, endpoint: str, json_data: dict[str, Any], return_data: str | None = "data"):
         logger.info(f"POST to {self.url}{endpoint}")
         async with CachingClient(
             AsyncClient(event_hooks={"request": [self.ratelimit_request], "response": [self.raise_on_4xx_5xx]})
@@ -87,7 +100,7 @@ class ScryfallConnection:
 
     async def sanitize_data(self, data: Any) -> Any:
         if isinstance(data, list):
-            returnable_list: List[Any] = []
+            returnable_list: list[Any] = []
             for item in data:
                 if isinstance(item, dict):
                     returnable_list.append(await self.sanitize_data(item))
@@ -105,7 +118,7 @@ class ScryfallConnection:
             return returnable_dict
         return data
 
-    async def pagination_list(self, return_data: Optional[str], returnable: Dict[str, Any]) -> Dict[str, Any]:
+    async def pagination_list(self, return_data: str | None, returnable: dict[str, Any]) -> dict[str, Any]:
         if "has_more" in returnable and "next_page" in returnable and isinstance(return_data, str):
             has_more = True
             url = returnable["next_page"].replace(self.url, "")
@@ -122,22 +135,27 @@ class ScryfallConnection:
 
     async def sets(self) -> APIList:
         returnable_data = "data"
-        all_sets = await self.get_json("sets", return_data=returnable_data)
+        url = f"{self.url}sets"
+        all_sets = await self.get_json(url, return_data=returnable_data)
+        logger.debug(all_sets)
         return APIList(**all_sets)
 
     async def set_by_code(self, set_code: str) -> Sets:
         returnable_data = None
-        set_data = await self.get_json(f"sets/{set_code}", return_data=returnable_data)
+        url = f"{self.url}sets/{set_code}"
+        set_data = await self.get_json(url, return_data=returnable_data)
         return Sets(**set_data)
 
     async def set_by_tcgplayer(self, tcgplayer_id: str) -> Sets:
         returnable_data = None
-        set_data = await self.get_json(f"sets/tcgplayer/{tcgplayer_id}", return_data=returnable_data)
+        url = f"{self.url}sets/tcgplayer/{tcgplayer_id}"
+        set_data = await self.get_json(url, return_data=returnable_data)
         return Sets(**set_data)
 
     async def set_by_id(self, api_id: str) -> Sets:
         returnable_data = None
-        set_data = await self.get_json(f"sets/{api_id}", return_data=returnable_data)
+        url = f"{self.url}sets/{api_id}"
+        set_data = await self.get_json(url, return_data=returnable_data)
         return Sets(**set_data)
 
     # Cards
@@ -154,6 +172,7 @@ class ScryfallConnection:
     ) -> APIList:
         """https://scryfall.com/docs/api/cards/search"""
         returnable_data = "data"
+        url = f"{self.url}cards/search"
         params = {
             "q": query,
             "unique": unique,
@@ -163,60 +182,84 @@ class ScryfallConnection:
             "include_multilinqual": include_multilinqual,
             "include_variations": include_variations,
         }
-        search_data = await self.get_json("cards/search", params=params, return_data=returnable_data)
+        search_data = await self.get_json(url, params=params, return_data=returnable_data)
         returnable = APIList(**search_data)
         return returnable
 
     async def cards_named(
         self,
-        exact: Optional[str] = None,
-        fuzzy: Optional[str] = None,
-        set_code: Optional[str] = None,
-        format_response: str = "json",
-        face: str = None,
-        version: str = None,
-    ) -> Optional[Cards]:
-        if format_response != "json":
-            raise NotImplementedError
+        exact: str | None = None,
+        fuzzy: str | None = None,
+        set_code: str | None = None,
+        face: str | None = None,
+        version: str | None = None,
+    ) -> Cards:
         returnable_data = None
+        url = f"{self.url}cards/named"
         params = {
             "exact": exact,
             "fuzzy": fuzzy,
             "set": set_code,
-            "format": format_response,
+            "format": "json",
             "face": face,
             "version": version,
         }
-        named_card_data = await self.get_json("cards/named", params=params, return_data=returnable_data)
-        if named_card_data:
-            return Cards(**named_card_data)
-        return None
+        card_data = await self.get_json(url, params=params, return_data=returnable_data)
+        return Cards(**card_data)
+
+    async def cards_named_image(
+        self,
+        exact: str | None = None,
+        fuzzy: str | None = None,
+        set_code: str | None = None,
+        face: str | None = None,
+        version: str | None = None,
+    ) -> bytes:
+        url = f"{self.url}cards/named"
+        params = {
+            "exact": exact,
+            "fuzzy": fuzzy,
+            "set": set_code,
+            "format": "image",
+            "face": face,
+            "version": version,
+        }
+        return await self.get_image(url, params=params)
 
     async def cards_autocomplete(self, query: str) -> Catalogs:
         returnable_data = "data"
+        url = f"{self.url}cards/autocomplete"
         if len(query) <= 2:
             raise ValueError("Must query for more than 2 characters.")
         params = {"q": query}
-        autocompletes = await self.get_json("cards/autocomplete", params=params, return_data=returnable_data)
+        autocompletes = await self.get_json(url, params=params, return_data=returnable_data)
         return Catalogs(**autocompletes)
 
-    async def cards_random(
-        self, query: str, format_response: str = "json", face: str = None, version: str = None
-    ) -> Cards:
-        if format_response != "json":
-            raise NotImplementedError
+    async def cards_random(self, query: str, face: str | None = None, version: str | None = None) -> Cards:
         returnable_data = None
+        url = f"{self.url}cards/random"
         params = {
             "q": query,
-            "format": format_response,
+            "format": "json",
             "face": face,
             "version": version,
         }
-        random_card = await self.get_json("cards/random", params=params, return_data=returnable_data)
-        return Cards(**random_card)
+        card_data = await self.get_json(url, params=params, return_data=returnable_data)
+        return Cards(**card_data)
 
-    async def cards_collection(self, identifiers: List[Dict[str, str | int]]) -> APIList:
+    async def cards_random_image(self, query: str, face: str | None = None, version: str | None = None) -> bytes:
+        url = f"{self.url}cards/random"
+        params = {
+            "q": query,
+            "format": "image",
+            "face": face,
+            "version": version,
+        }
+        return await self.get_image(url, params=params)
+
+    async def cards_collection(self, identifiers: list[dict[str, str | int]]) -> APIList:
         returnable_data = "data"
+        url = f"{self.url}cards/collection"
         for identifier in identifiers:
             for k in identifier:
                 if k not in List_of_Card_Identifiers:
@@ -229,7 +272,7 @@ class ScryfallConnection:
                 if k == "collector_number" and "set" not in identifier:
                     raise ValueError(f"{k} must also include 'set'")
         data = {"identifiers": identifiers}
-        list_of_cards = await self.post("cards/collection", json_data=data, return_data=returnable_data)
+        list_of_cards = await self.post(url, json_data=data, return_data=returnable_data)
         returnable = APIList(**list_of_cards)
         return returnable
 
@@ -237,108 +280,141 @@ class ScryfallConnection:
         self,
         set_code: str,
         number: int,
-        lang: Optional[str] = "",
-        format_response: str = "json",
-        face: str = None,
-        version: str = None,
-    ) -> Optional[Cards]:
-        if format_response != "json":
-            raise NotImplementedError
+        lang: str | None = None,
+        face: str | None = None,
+        version: str | None = None,
+    ) -> Cards:
         returnable_data = None
+        url = f"{self.url}cards/{set_code}/{number}/{lang}"
         params = {
-            "format": format_response,
+            "format": "json",
             "face": face,
             "version": version,
         }
-        named_card_data = await self.get_json(
-            f"cards/{set_code}/{number}/{lang}", params=params, return_data=returnable_data
+        card_data = await self.get_json(
+            url,
+            params=params,
+            return_data=returnable_data,
         )
-        if named_card_data:
-            return Cards(**named_card_data)
-        return None
+        return Cards(**card_data)
+
+    async def card_set_number_image(
+        self, set_code: str, number: int, lang: str | None = "", face: str | None = None, version: str | None = None
+    ) -> bytes:
+        url = f"{self.url}cards/{set_code}/{number}/{lang}"
+        params = {
+            "format": "image",
+            "face": face,
+            "version": version,
+        }
+        return await self.get_image(url, params=params)
 
     async def card_by_platform_id(
-        self, platform: str, platform_id: str, format_response: str = "json", face: str = None, version: str = None
-    ) -> Optional[Cards]:
-        if format_response != "json":
-            raise NotImplementedError
+        self, platform: str, platform_id: str, face: str | None = None, version: str | None = None
+    ) -> Cards:
         if platform_id not in List_of_Platforms:
             raise ValueError(f"{platform} is not a valid platform to pull ID's from")
         if platform not in self.platforms:
             raise ValueError(f"{platform} not in {self.platforms}")
         returnable_data = None
+        url = f"{self.url}cards/{platform}/{platform_id}"
         params = {
-            "format": format_response,
+            "format": "json",
             "face": face,
             "version": version,
         }
-        named_card_data = await self.get_json(
-            f"cards/{platform}/{platform_id}", params=params, return_data=returnable_data
+        card_data = await self.get_json(
+            url,
+            params=params,
+            return_data=returnable_data,
         )
-        if named_card_data:
-            return Cards(**named_card_data)
-        return None
+        return Cards(**card_data)
+
+    async def card_by_platform_id_image(
+        self, platform: str, platform_id: str, face: str | None = None, version: str | None = None
+    ) -> bytes:
+        if platform_id not in List_of_Platforms:
+            raise ValueError(f"{platform} is not a valid platform to pull ID's from")
+        if platform not in self.platforms:
+            raise ValueError(f"{platform} not in {self.platforms}")
+        url = f"{self.url}cards/{platform}/{platform_id}"
+        params = {
+            "format": "json",
+            "face": face,
+            "version": version,
+        }
+        return await self.get_image(url, params=params)
 
     async def card_by_api_id(self, api_id: str) -> Cards:
         returnable_data = None
-        card_data = await self.get_json(f"cards/{api_id}", return_data=returnable_data)
+        url = f"{self.url}cards/{api_id}"
+        card_data = await self.get_json(url, return_data=returnable_data)
         return Cards(**card_data)
 
     # Misc
 
     async def rulings_by_platform_id(self, platform: str, api_id: str) -> APIList:
         returnable_data = "data"
+        url = f"{self.url}cards/{platform}/{api_id}/rulings"
         if platform not in Rulings_Platforms:
             raise ValueError(f"{platform} not a valid platform for IDs")
-        card_rulings = await self.get_json(f"cards/{platform}/{api_id}/rulings", return_data=returnable_data)
+        card_rulings = await self.get_json(url, return_data=returnable_data)
         returnable = APIList(**card_rulings)
         return returnable
 
     async def rulings_by_set_number(self, set_code: str, set_number: str) -> APIList:
         returnable_data = "data"
-        card_rulings = await self.get_json(f"cards/{set_code}/{set_number}/rulings", return_data=returnable_data)
+        url = f"{self.url}cards/{set_code}/{set_number}/rulings"
+        card_rulings = await self.get_json(url, return_data=returnable_data)
         returnable = APIList(**card_rulings)
         return returnable
 
     async def rulings_by_api_id(self, set_code: str, card_num: str | int) -> APIList:
         returnable_data = "data"
-        card_rulings = await self.get_json(f"cards/{set_code}/{card_num}/rulings", return_data=returnable_data)
+        url = f"{self.url}cards/{set_code}/{card_num}/rulings"
+        card_rulings = await self.get_json(url, return_data=returnable_data)
         returnable = APIList(**card_rulings)
         return returnable
 
     async def symbology(self) -> APIList:
         returnable_data = "data"
-        symbol_data = await self.get_json("symbology", return_data=returnable_data)
+        url = f"{self.url}symbology"
+        symbol_data = await self.get_json(url, return_data=returnable_data)
         returnable = APIList(**symbol_data)
         return returnable
 
     async def parse_mana(self, cost: str) -> ManaCost:
         returnable_data = None
+        url = f"{self.url}symbology/parse-mana"
         params = {"cost": cost}
-        mana_cost = await self.get_json("/symbology/parse-mana", params=params, return_data=returnable_data)
+        mana_cost = await self.get_json(url, params=params, return_data=returnable_data)
         return ManaCost(**mana_cost)
 
     async def catalogs(self, catalog: str) -> Catalogs:
         if catalog not in List_of_Catalogs:
             raise ValueError(f"{catalog} is not a valid catalog")
         returnable_data = None
-        returnable = await self.get_json(f"catalog/{catalog}", return_data=returnable_data)
+        url = f"{self.url}catalog/{catalog}"
+        returnable = await self.get_json(url, return_data=returnable_data)
         return Catalogs(**returnable)
 
     # Bulk Data / Catalog
 
     async def bulk_data(self) -> APIList:
         returnable_data = "data"
-        bulk_data_list = await self.get_json("bulk-data", return_data=returnable_data)
+        url = f"{self.url}/bulk-data"
+        bulk_data_list = await self.get_json(url, return_data=returnable_data)
         returnable = APIList(**bulk_data_list)
         return returnable
 
     async def bulk_data_by_id(self, api_id: str) -> BulkData:
         returnable_data = None
-        bulk_data = await self.get_json(f"bulk-data/{api_id}", return_data=returnable_data)
+        url = f"{self.url}bulk-data/{api_id}"
+        bulk_data = await self.get_json(url, return_data=returnable_data)
         return BulkData(**bulk_data)
 
     async def bulk_data_by_type(self, api_type: str) -> BulkData:
         returnable_data = None
-        bulk_data = await self.get_json(f"bulk-data/{api_type}", return_data=returnable_data)
+        url = f"{self.url}bulk-data/{api_type}"
+        bulk_data = await self.get_json(url, return_data=returnable_data)
         return BulkData(**bulk_data)
