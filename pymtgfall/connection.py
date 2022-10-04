@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import Any
 
 import httpx
@@ -35,21 +36,30 @@ class ScryfallConnection:
         if response.status_code >= 400:
             error_response = await response.aread()
             logger.error(f"Direct API error: {error_response.decode('utf-8')}")
-        response.raise_for_status()
+            response.raise_for_status()
 
     async def ratelimit_request(self, request: httpx.Request):
         sleep = self.sleep
         logger.warning(f"Self Rate Limiting for {sleep * 1000}ms for {request.method} {request.url}")
         await trio.sleep(seconds=sleep)
 
-    async def _get(self, url: str, params: dict[str, Any] | None = None, headers: dict[str, Any] | None = None):
+    async def _get(
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+        follow_redirects: bool = False,
+    ):
         if params is None:
             params = {}
         if headers is None:
             headers = {}
         logger.info(f"GET to {url}")
         async with CachingClient(
-            AsyncClient(event_hooks={"request": [self.ratelimit_request], "response": [self.raise_on_4xx_5xx]})
+            AsyncClient(
+                event_hooks={"request": [self.ratelimit_request], "response": [self.raise_on_4xx_5xx]},
+                follow_redirects=follow_redirects,
+            )
         ) as client:
             resp = await client.get(url, params=params, headers=headers)
             logger.info(f"GET {resp.status_code} at {resp.url}")
@@ -79,13 +89,13 @@ class ScryfallConnection:
         url: str,
         params: dict[str, Any] | None = None,
         headers: dict[str, Any] | None = None,
-    ) -> bytes:
+    ) -> BytesIO:
         if params is None:
             params = {}
         if headers is None:
             headers = {}
-        resp = await self._get(url=url, params=params, headers=headers)
-        return resp.content
+        resp = await self._get(url=url, params=params, headers=headers, follow_redirects=True)
+        return BytesIO(resp.content)
 
     async def post(self, endpoint: str, json_data: dict[str, Any], return_data: str | None = "data"):
         logger.info(f"POST to {self.url}{endpoint}")
@@ -214,7 +224,7 @@ class ScryfallConnection:
         set_code: str | None = None,
         face: str | None = None,
         version: str | None = None,
-    ) -> bytes:
+    ) -> BytesIO:
         url = f"{self.url}cards/named"
         params = {
             "exact": exact,
@@ -247,7 +257,7 @@ class ScryfallConnection:
         card_data = await self.get_json(url, params=params, return_data=returnable_data)
         return Cards(**card_data)
 
-    async def cards_random_image(self, query: str, face: str | None = None, version: str | None = None) -> bytes:
+    async def cards_random_image(self, query: str, face: str | None = None, version: str | None = None) -> BytesIO:
         url = f"{self.url}cards/random"
         params = {
             "q": query,
@@ -300,7 +310,7 @@ class ScryfallConnection:
 
     async def card_set_number_image(
         self, set_code: str, number: int, lang: str | None = "", face: str | None = None, version: str | None = None
-    ) -> bytes:
+    ) -> BytesIO:
         url = f"{self.url}cards/{set_code}/{number}/{lang}"
         params = {
             "format": "image",
@@ -332,7 +342,7 @@ class ScryfallConnection:
 
     async def card_by_platform_id_image(
         self, platform: str, platform_id: str, face: str | None = None, version: str | None = None
-    ) -> bytes:
+    ) -> BytesIO:
         if platform_id not in List_of_Platforms:
             raise ValueError(f"{platform} is not a valid platform to pull ID's from")
         if platform not in self.platforms:

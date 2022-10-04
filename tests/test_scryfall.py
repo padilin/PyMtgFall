@@ -331,7 +331,7 @@ class TestsSets:
         test_json,
         httpx_mock: HTTPXMock,
         scryfall_conn: ScryfallConnection,
-        autojump_clock
+        autojump_clock,
     ):
         func_resp, expected_resp = await endpoint_tester(
             resp_json, name_of_func_to_test, func_kwargs, test_json, httpx_mock, scryfall_conn
